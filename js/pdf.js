@@ -1,26 +1,77 @@
-// Fonction auxiliaire pour convertir URL en base64
+// Fonction auxiliaire pour convertir URL en base64 avec qualité fixe 70%
 async function urlToBase64(url) {
     try {
-        // Essai 1 : Fetch direct
         const response = await fetch(url);
         const blob = await response.blob();
+        
         return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // ✅ Taille fixe optimale pour 150 DPI
+                const maxSize = 600;
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > height && width > maxSize) {
+                    height = (height * maxSize) / width;
+                    width = maxSize;
+                } else if (height > maxSize) {
+                    width = (width * maxSize) / height;
+                    height = maxSize;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // ✅ 70% de qualité fixe
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            
+            img.onerror = reject;
+            img.src = URL.createObjectURL(blob);
         });
     } catch (error) {
-        // Essai 2 : Via proxy CORS
+        // Essai avec proxy CORS
         try {
             const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
             const response = await fetch(proxiedUrl);
             const blob = await response.blob();
+            
             return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    const maxSize = 600;
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > height && width > maxSize) {
+                        height = (height * maxSize) / width;
+                        width = maxSize;
+                    } else if (height > maxSize) {
+                        width = (width * maxSize) / height;
+                        height = maxSize;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                
+                img.onerror = reject;
+                img.src = URL.createObjectURL(blob);
             });
         } catch (proxyError) {
             console.warn(`Impossible de charger l'image: ${url}`);
@@ -31,7 +82,16 @@ async function urlToBase64(url) {
 
 async function generatePDF(profile, gifts, wisdomLevel) {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4');
+    
+    // ✅ Configuration PDF optimisée 150 DPI
+    const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+        putOnlyUsedFonts: true,
+        precision: 2
+    });
 
     const pageWidth = 210;
     const pageHeight = 297;
@@ -41,7 +101,7 @@ async function generatePDF(profile, gifts, wisdomLevel) {
     const itemWidth = (pageWidth - (margin * 2)) / itemsPerRow;
     const itemHeight = (pageHeight - (margin * 2) - 20) / itemsPerColumn;
 
-    // ⭐ CONVERSION DES URLS EN BASE64 AVANT GÉNÉRATION
+    // ✅ Conversion des images avec 70% de qualité
     const processedGifts = await Promise.all(gifts.map(async (gift) => {
         if (gift.image && gift.image.startsWith('http')) {
             const base64 = await urlToBase64(gift.image);
@@ -58,38 +118,36 @@ async function generatePDF(profile, gifts, wisdomLevel) {
     doc.setFontSize(18);
     doc.text(`Liste de Noël de ${profile.name}`, pageWidth / 2, 12, { align: 'center' });
 
-    // Niveau de sagesse
     const wisdomEmoji = wisdomLevel < 33 ? '😢' : wisdomLevel < 66 ? '😐' : '😊';
     doc.setFontSize(12);
-    doc.text(`Sagesse cette année : ${wisdomLevel}%`, pageWidth / 2, 18, { align: 'center' });
+    doc.text(`Sagesse cette année : ${wisdomLevel}% ${wisdomEmoji}`, pageWidth / 2, 18, { align: 'center' });
 
     let x = margin;
     let y = 30;
     let itemCount = 0;
 
-    // ⭐ UTILISER LES CADEAUX AVEC IMAGES CONVERTIES
     for (const gift of processedGifts) {
-        // Nom du cadeau
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(8);
         const textLines = doc.splitTextToSize(gift.name, itemWidth - 4);
         doc.text(textLines, x + itemWidth / 2, y, { align: 'center' });
 
-        // Image (maintenant en base64)
         if (gift.image) {
             try {
                 const imgY = y + (textLines.length * 3);
                 const imgSize = Math.min(itemWidth - 4, itemHeight - (textLines.length * 3) - 4);
-                doc.addImage(gift.image, 'JPEG', x + 2, imgY, imgSize, imgSize);
+                
+                // ✅ JPEG avec compression FAST
+                doc.addImage(gift.image, 'JPEG', x + 2, imgY, imgSize, imgSize, undefined, 'FAST');
             } catch (error) {
                 console.error('Erreur image:', error);
-                // Afficher un placeholder si l'image échoue
+                const imgY = y + (textLines.length * 3);
+                const imgSize = Math.min(itemWidth - 4, itemHeight - (textLines.length * 3) - 4);
                 doc.setFontSize(20);
                 doc.setTextColor(200, 200, 200);
                 doc.text('🎁', x + itemWidth / 2, imgY + imgSize / 2, { align: 'center' });
             }
         } else {
-            // Pas d'image : afficher un emoji cadeau
             const imgY = y + (textLines.length * 3);
             const imgSize = Math.min(itemWidth - 4, itemHeight - (textLines.length * 3) - 4);
             doc.setFontSize(30);
@@ -97,7 +155,6 @@ async function generatePDF(profile, gifts, wisdomLevel) {
             doc.text('🎁', x + itemWidth / 2, imgY + imgSize / 2, { align: 'center' });
         }
 
-        // Marque si présente
         if (gift.brand) {
             doc.setFontSize(6);
             doc.setTextColor(100, 100, 100);
@@ -127,11 +184,9 @@ async function generatePDF(profile, gifts, wisdomLevel) {
         doc.text(`Liste faite avec Amour par ${profile.name} - Page ${i} / ${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
     }
 
-    // Sauvegarder et partager
     const pdfBlob = doc.output('blob');
     const fileName = `Liste_Noel_${profile.name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
 
-    // Utiliser l'API Web Share si disponible
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], fileName, { type: 'application/pdf' })] })) {
         try {
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
@@ -148,6 +203,9 @@ async function generatePDF(profile, gifts, wisdomLevel) {
         }
     } else {
         doc.save(fileName);
-        showNotification('📄 PDF téléchargé avec succès !', 'success');
+        // ✅ Notification de succès
+        if (typeof showNotification === 'function') {
+            showNotification('📄 PDF téléchargé avec succès !', 'success');
+        }
     }
 }
