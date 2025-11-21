@@ -75,7 +75,7 @@ body {
 }
 
 .back-btn {
-    position: absolute;
+    position: relative;
     left: 10px;
     top: 50%;
     background: rgba(255,255,255,0.3);
@@ -725,4 +725,5 @@ body {
 .profile-selector p strong {
     color: #FFDD00;
 }
+
 
