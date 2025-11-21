@@ -1,4 +1,4 @@
-const CACHE_NAME = 'liste-noel-v1.3.5';
+const CACHE_NAME = 'liste-noel-v1.3.6';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -67,6 +67,7 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+
 
 
 
