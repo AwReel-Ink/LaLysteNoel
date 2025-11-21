@@ -656,55 +656,30 @@ function hideSantaAnimation() {
 
 async function shareList() {
     try {
+        // Récupérer les données
         const list = await storage.getList(currentListId);
         const gifts = await storage.getGiftsByList(currentListId);
         const profiles = await storage.getProfiles();
         const profile = profiles.find(p => p.id === list.profileId);
 
         if (!profile) {
-            showNotification('❌ Profil introuvable', 'error');
+            alert('❌ Profil introuvable');
             return;
         }
 
+        // Compter les images URL à convertir
         const urlImages = gifts.filter(g => g.image && g.image.startsWith('http')).length;
         
-        // ✅ Loader si images à convertir
-        let loader = null;
         if (urlImages > 0) {
-            loader = document.createElement('div');
-            loader.id = 'pdf-loader';
-            loader.innerHTML = `
-                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                            background: rgba(0,0,0,0.8); display: flex; align-items: center; 
-                            justify-content: center; z-index: 9999; color: white; font-size: 20px;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 50px; margin-bottom: 20px;">⏳</div>
-                        <div>Préparation du PDF...</div>
-                        <div style="font-size: 14px; margin-top: 10px; opacity: 0.7;">
-                            ${urlImages} image(s) à convertir
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(loader);
+            console.log(`📄 Conversion de ${urlImages} image(s) en cours...`);
         }
 
-        try {
-            // ✅ Générer et partager
-            await generatePDF(profile, gifts, list.wisdomLevel);
-        } finally {
-            // ✅ Retirer le loader
-            if (loader && loader.parentNode) {
-                document.body.removeChild(loader);
-            }
-        }
-
-    } catch (error) {
-        console.error('❌ Erreur partage:', error);
-        showNotification('❌ Erreur lors du partage', 'error');
+        // Générer le PDF (avec conversion automatique)
+        await generatePDF(profile, gifts, list.wisdomLevel);
         
-        const loader = document.getElementById('pdf-loader');
-        if (loader) document.body.removeChild(loader);
+    } catch (error) {
+        console.error('Erreur lors de la génération du PDF:', error);
+        alert('❌ Erreur lors de la génération du PDF');
     }
 }
 
