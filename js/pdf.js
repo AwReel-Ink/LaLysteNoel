@@ -184,47 +184,68 @@ async function generatePDF(profile, gifts, wisdomLevel) {
         doc.text(`Liste faite avec Amour par ${profile.name} - Page ${i} / ${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
     }
 
-        const pdfBlob = doc.output('blob');
+       const pdfBlob = doc.output('blob');
     const fileName = `Liste_Noel_${profile.name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
 
-    // ✅ Détection simplifiée du partage natif
+    // ✅ TOUJOURS créer le File pour mobile
+    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+    // ✅ Vérifier si le partage est supporté (mobile uniquement en général)
     if (navigator.share) {
         try {
-            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+            // Tester si on PEUT partager des fichiers
+            const canShareFiles = navigator.canShare && navigator.canShare({ files: [pdfFile] });
             
-            // ✅ Partage direct sans vérification canShare (qui peut bloquer)
-            await navigator.share({
-                title: `Liste de Noël de ${profile.name}`,
-                text: `Voici la liste de cadeaux de ${profile.name} pour Noël 🎄`,
-                files: [file]
-            });
-            
-            // ✅ Notification uniquement si partage réussi
-            if (typeof showNotification === 'function') {
-                showNotification('✅ PDF partagé avec succès !', 'success');
+            if (canShareFiles) {
+                // ✅ MOBILE : Partage avec fichier
+                await navigator.share({
+                    title: `Liste de Noël de ${profile.name}`,
+                    text: `Voici la liste de cadeaux de ${profile.name} pour Noël 🎄`,
+                    files: [pdfFile]
+                });
+                console.log('✅ PDF partagé avec succès');
+            } else {
+                // ⚠️ MOBILE : Partage sans fichier (lien uniquement)
+                await navigator.share({
+                    title: `Liste de Noël de ${profile.name}`,
+                    text: `Voici la liste de cadeaux de ${profile.name} pour Noël 🎄\n\nConsultez la liste sur : ${window.location.href}`
+                });
+                
+                // Télécharger quand même le PDF localement
+                downloadPdfFile(pdfBlob, fileName);
+                console.log('⚠️ Partage lien + téléchargement PDF');
             }
             
         } catch (error) {
-            // Si l'utilisateur annule (AbortError), ne rien faire
+            // Si annulation, ne rien faire
             if (error.name === 'AbortError') {
-                console.log('Partage annulé par l\'utilisateur');
+                console.log('ℹ️ Partage annulé');
                 return;
             }
             
-            // Si erreur réelle, fallback sur téléchargement
-            console.warn('Partage non supporté, téléchargement direct:', error);
-            doc.save(fileName);
-            
-            if (typeof showNotification === 'function') {
-                showNotification('💾 PDF téléchargé sur l\'appareil', 'success');
-            }
+            // Si autre erreur, télécharger
+            console.warn('⚠️ Erreur partage, téléchargement:', error);
+            downloadPdfFile(pdfBlob, fileName);
         }
     } else {
-        // ✅ Fallback desktop : téléchargement direct
-        doc.save(fileName);
-        
-        if (typeof showNotification === 'function') {
-            showNotification('💾 PDF téléchargé sur l\'appareil', 'success');
-        }
+        // ✅ DESKTOP : Téléchargement direct
+        downloadPdfFile(pdfBlob, fileName);
+        console.log('💾 PDF téléchargé (desktop)');
+    }
+}
+
+// ✅ Fonction helper pour télécharger le PDF
+function downloadPdfFile(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    if (typeof showNotification === 'function') {
+        showNotification('💾 PDF téléchargé !', 'success');
     }
 }
