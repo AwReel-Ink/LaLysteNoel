@@ -663,23 +663,25 @@ async function shareList() {
         const profile = profiles.find(p => p.id === list.profileId);
 
         if (!profile) {
-            alert('❌ Profil introuvable');
+            showNotification('❌ Profil introuvable', 'error');
             return;
         }
 
         // Compter les images URL à convertir
         const urlImages = gifts.filter(g => g.image && g.image.startsWith('http')).length;
-        
+
         if (urlImages > 0) {
-            console.log(`📄 Conversion de ${urlImages} image(s) en cours...`);
+            showNotification(`⏳ Conversion de ${urlImages} image(s) en cours...`, 'info');
+        } else {
+            showNotification('📄 Génération du PDF...', 'info');
         }
 
-        // Générer le PDF (avec conversion automatique)
+        // Générer le PDF (avec conversion automatique et partage natif)
         await generatePDF(profile, gifts, list.wisdomLevel);
-        
+
     } catch (error) {
         console.error('Erreur lors de la génération du PDF:', error);
-        alert('❌ Erreur lors de la génération du PDF');
+        showNotification('❌ Erreur lors de la génération du PDF', 'error');
     }
 }
 
@@ -695,3 +697,4 @@ window.onclick = (event) => {
         event.target.classList.remove('active');
     }
 };
+
