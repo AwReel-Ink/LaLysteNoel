@@ -666,22 +666,45 @@ async function shareList() {
             return;
         }
 
-        // ⚡ Notification discrète APRÈS le clic, sans bloquer
         const urlImages = gifts.filter(g => g.image && g.image.startsWith('http')).length;
         
+        // ✅ Loader si images à convertir
+        let loader = null;
         if (urlImages > 0) {
-            // setTimeout pour ne pas bloquer l'UI
-            setTimeout(() => {
-                showNotification(`⏳ Préparation de ${urlImages} image(s)...`, 'info');
-            }, 100);
+            loader = document.createElement('div');
+            loader.id = 'pdf-loader';
+            loader.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                            background: rgba(0,0,0,0.8); display: flex; align-items: center; 
+                            justify-content: center; z-index: 9999; color: white; font-size: 20px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 50px; margin-bottom: 20px;">⏳</div>
+                        <div>Préparation du PDF...</div>
+                        <div style="font-size: 14px; margin-top: 10px; opacity: 0.7;">
+                            ${urlImages} image(s) à convertir
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(loader);
         }
 
-        // Générer le PDF
-        await generatePDF(profile, gifts, list.wisdomLevel);
+        try {
+            // ✅ Générer et partager
+            await generatePDF(profile, gifts, list.wisdomLevel);
+        } finally {
+            // ✅ Retirer le loader
+            if (loader && loader.parentNode) {
+                document.body.removeChild(loader);
+            }
+        }
 
     } catch (error) {
-        console.error('Erreur lors de la génération du PDF:', error);
-        showNotification('❌ Erreur lors de la génération du PDF', 'error');
+        console.error('❌ Erreur partage:', error);
+        showNotification('❌ Erreur lors du partage', 'error');
+        
+        const loader = document.getElementById('pdf-loader');
+        if (loader) document.body.removeChild(loader);
     }
 }
 
