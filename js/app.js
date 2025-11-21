@@ -656,7 +656,6 @@ function hideSantaAnimation() {
 
 async function shareList() {
     try {
-        // Récupérer les données
         const list = await storage.getList(currentListId);
         const gifts = await storage.getGiftsByList(currentListId);
         const profiles = await storage.getProfiles();
@@ -667,16 +666,17 @@ async function shareList() {
             return;
         }
 
-        // Compter les images URL à convertir
+        // ⚡ Notification discrète APRÈS le clic, sans bloquer
         const urlImages = gifts.filter(g => g.image && g.image.startsWith('http')).length;
-
+        
         if (urlImages > 0) {
-            showNotification(`⏳ Conversion de ${urlImages} image(s) en cours...`, 'info');
-        } else {
-            showNotification('📄 Génération du PDF...', 'info');
+            // setTimeout pour ne pas bloquer l'UI
+            setTimeout(() => {
+                showNotification(`⏳ Préparation de ${urlImages} image(s)...`, 'info');
+            }, 100);
         }
 
-        // Générer le PDF (avec conversion automatique et partage natif)
+        // Générer le PDF
         await generatePDF(profile, gifts, list.wisdomLevel);
 
     } catch (error) {
@@ -697,4 +697,3 @@ window.onclick = (event) => {
         event.target.classList.remove('active');
     }
 };
-
