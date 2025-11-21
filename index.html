@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#E00000">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+
+    <title>Ma Liste de Noël</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Écran de chargement -->
+    <div id="loader" class="loader">
+        <div class="christmas-loader">🎅</div>
+    </div>
+
+    <!-- Menu Principal -->
+    <div id="main-menu" class="screen active">
+        <div class="header-gradient">
+            <h1>🎄 Ma Liste de Noël 🎄</h1>
+        </div>
+        <div class="menu-container">
+            <button class="menu-btn" onclick="showScreen('lists-menu')">
+                🎁 Mes Listes de Cadeaux
+            </button>
+            <button class="menu-btn" onclick="showScreen('profiles-menu')">
+                👶 Profils Enfant(s)
+            </button>
+            <button class="menu-btn" onclick="showScreen('info-menu')">
+                ℹ️ Informations
+            </button>
+        </div>
+    </div>
+
+    <!-- Menu Listes de Cadeaux -->
+    <div id="lists-menu" class="screen">
+        <div class="header-gradient">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Retour</button>
+            <h2>🎁 Mes Listes de Cadeaux</h2>
+        </div>
+        <div class="menu-container">
+            <button class="action-btn send-all" onclick="sendAllLists()">
+                📬 Envoyer toutes les listes au Père Noël
+            </button>
+            <button class="action-btn create" onclick="showCreateListMenu()">
+                ➕ Créer une nouvelle liste
+            </button>
+            <div id="lists-container" class="lists-container"></div>
+        </div>
+    </div>
+
+    <!-- Écran d'une liste spécifique -->
+    <div id="list-view" class="screen">
+        <div class="header-gradient">
+            <button class="back-btn" onclick="showScreen('lists-menu')">← Retour</button>
+            <h2 id="list-title"></h2>
+        </div>
+        <div class="menu-container">
+            <button class="action-btn send" onclick="sendListToSanta()">
+                📬 Envoyer au Père Noël
+            </button>
+            <button class="action-btn share" onclick="shareList()">
+                📤 Partager la liste (PDF)
+            </button>
+            
+            <div class="wisdom-section">
+                <label>Est-ce que j'ai été sage cette année ?</label>
+                <div class="wisdom-slider">
+                    <span class="emoji-start">🔴</span>
+                    <input type="range" id="wisdom-slider" min="0" max="100" value="50" 
+                           oninput="updateWisdomColor(this.value)">
+                    <span class="emoji-end">🟢</span>
+                </div>
+                <div class="wisdom-value" id="wisdom-value">😐</div>
+            </div>
+
+            <button class="action-btn add-gift" onclick="showAddGift()">
+                ➕ Ajouter un cadeau
+            </button>
+
+            <div id="gifts-grid" class="gifts-grid"></div>
+        </div>
+    </div>
+
+    <!-- Modal Ajouter un Cadeau -->
+    <div id="add-gift-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>➕ Ajouter un cadeau</h3>
+                <button class="close-btn" onclick="closeModal('add-gift-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="gift-name" placeholder="Nom du jouet *" required>
+                <input type="text" id="gift-brand" placeholder="Marque du jouet (facultatif)">
+                
+                <div class="image-options">
+                    <button class="img-btn" onclick="document.getElementById('gallery-input').click()">
+                        🖼️ Galerie
+                    </button>
+                    <button class="img-btn" onclick="document.getElementById('camera-input').click()">
+                        📷 Appareil Photo
+                    </button>
+                    <button class="img-btn" onclick="showUrlInput()">
+                        🔗 URL
+                    </button>
+                </div>
+
+                <input type="file" id="gallery-input" accept="image/png,image/jpeg,image/jpg,image/gif,image/heif,image/heic" 
+                       style="display:none" onchange="handleImageUpload(event)">
+                <input type="file" id="camera-input" accept="image/*" capture="camera" 
+                       style="display:none" onchange="handleImageUpload(event)">
+                
+                <div id="url-input-container" style="display:none; margin: 15px 0;">
+    <input 
+        type="url" 
+        id="image-url" 
+        placeholder="https://exemple.com/image.jpg"
+        onkeypress="if(event.key==='Enter') loadImageFromUrl()"
+        style="width: 100%; padding: 10px; border: 2px solid #00A651; border-radius: 8px; margin-bottom: 10px; font-size: 14px;">
+    <div style="display: flex; gap: 10px;">
+        <button onclick="loadImageFromUrl()" class="img-btn" style="flex: 1;">
+            ✓ Charger
+        </button>
+        <button onclick="showUrlInput()" class="img-btn" style="flex: 1; background: #C8102E;">
+            ✗ Annuler
+        </button>
+    </div>
+</div>
+
+                <div id="image-preview" class="image-preview"></div>
+
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeModal('add-gift-modal')">Annuler</button>
+                    <button class="btn-save" onclick="saveGift()">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Détails Cadeau -->
+    <div id="gift-detail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="detail-gift-name"></h3>
+                <button class="close-btn" onclick="closeModal('gift-detail-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <img id="detail-gift-image" class="detail-image" src="" alt="">
+                <p id="detail-gift-brand"></p>
+                <button class="btn-delete" onclick="deleteGift()">🗑️ Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Profils -->
+    <div id="profiles-menu" class="screen">
+        <div class="header-gradient">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Retour</button>
+            <h2>👶 Profils Enfant(s)</h2>
+        </div>
+        <div class="menu-container">
+            <button class="action-btn create" onclick="showCreateProfile()">
+                ➕ Créer un profil enfant
+            </button>
+            <div id="profiles-container" class="profiles-container"></div>
+        </div>
+    </div>
+
+    <!-- Modal Créer/Modifier Profil -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="profile-modal-title">➕ Créer un profil</h3>
+                <button class="close-btn" onclick="closeModal('profile-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="profile-name" placeholder="Prénom *" required>
+                <input type="date" id="profile-birthdate" placeholder="Date de naissance *" required>
+                
+                <div class="image-options">
+                    <button class="img-btn" onclick="document.getElementById('profile-gallery').click()">
+                        🖼️ Galerie
+                    </button>
+                    <button class="img-btn" onclick="showEmojiPicker()">
+                        😊 Smiley
+                    </button>
+                </div>
+
+                <input type="file" id="profile-gallery" accept="image/*" 
+                       style="display:none" onchange="handleProfileImage(event)">
+                
+                <div id="emoji-picker" class="emoji-picker" style="display:none;">
+                    <div class="emoji-grid">
+                        <span onclick="selectEmoji('👶')">👶</span>
+                        <span onclick="selectEmoji('👧')">👧</span>
+                        <span onclick="selectEmoji('👦')">👦</span>
+                        <span onclick="selectEmoji('🧒')">🧒</span>
+                        <span onclick="selectEmoji('👨')">👨</span>
+                        <span onclick="selectEmoji('👩')">👩</span>
+                        <span onclick="selectEmoji('😊')">😊</span>
+                        <span onclick="selectEmoji('😄')">😄</span>
+                        <span onclick="selectEmoji('🎅')">🎅</span>
+                        <span onclick="selectEmoji('🤶')">🤶</span>
+                        <span onclick="selectEmoji('🎄')">🎄</span>
+                        <span onclick="selectEmoji('⭐')">⭐</span>
+                        <span onclick="selectEmoji('🦌')">🦌</span>
+                    </div>
+                </div>
+
+                <div id="profile-image-preview" class="image-preview"></div>
+
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeModal('profile-modal')">Annuler</button>
+                    <button class="btn-save" onclick="saveProfile()">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Informations -->
+    <div id="info-menu" class="screen">
+        <div class="header-gradient">
+            <button class="back-btn" onclick="showScreen('main-menu')">← Retour</button>
+            <h2>ℹ️ Informations</h2>
+        </div>
+        <div class="menu-container info-content">
+            <div class="info-box">
+                <p><strong>Application créée par</strong></p>
+                <p>C LEROY Aurélien</p>
+                <p>2025 - Tous droits réservés</p>
+                <p class="version">Version 1.3.0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Animation Envoi au Père Noël -->
+    <div id="santa-animation" class="santa-animation">
+        <div class="letter-animation">
+            <div class="letter">✉️</div>
+            <div class="snowflakes">
+                <div class="snowflake">❄️</div>
+                <div class="snowflake">❄️</div>
+                <div class="snowflake">❄️</div>
+                <div class="snowflake">❄️</div>
+                <div class="snowflake">❄️</div>
+            </div>
+            <div class="north-pole"> 📍 Pôle Nord 🦌</div>
+        </div>
+        <p class="animation-text">Envoi en cours chez le Père Noël 🎅...</p>
+    </div>
+
+    <script>
+        // Enregistrement du Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker enregistré'))
+                    .catch(err => console.error('❌ Erreur Service Worker:', err));
+            });
+        }
+    </script>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/pdf.js"></script>
+    <script src="js/animation.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
