@@ -78,7 +78,6 @@ body {
     position: absolute;
     left: 10px;
     top: 50%;
-    transform: translateY(-50%);
     background: rgba(255,255,255,0.3);
     border: none;
     color: white;
@@ -726,3 +725,4 @@ body {
 .profile-selector p strong {
     color: #FFDD00;
 }
+
