@@ -1,11 +1,12 @@
 {
   "name": "Liste de Noël",
   "short_name": "Noël",
-  "description": "Application de création de listes de cadeaux de Noël pour enfants",
-  "start_url": "/",
+  "description": "Gérez votre liste de cadeaux de Noël",
+  "start_url": "/LaLysteNoel/",
+  "scope": "/LaLysteNoel/",
   "display": "standalone",
-  "background_color": "#E00000",
-  "theme_color": "#E00000",
+  "background_color": "#1a1a2e",
+  "theme_color": "#0f3460",
   "orientation": "portrait",
   "icons": [
     {
@@ -46,3 +47,4 @@
     }
   ]
 }
+
