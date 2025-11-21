@@ -184,68 +184,28 @@ async function generatePDF(profile, gifts, wisdomLevel) {
         doc.text(`Liste faite avec Amour par ${profile.name} - Page ${i} / ${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
     }
 
-       const pdfBlob = doc.output('blob');
+    const pdfBlob = doc.output('blob');
     const fileName = `Liste_Noel_${profile.name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
 
-    // ✅ TOUJOURS créer le File pour mobile
-    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-    // ✅ Vérifier si le partage est supporté (mobile uniquement en général)
-    if (navigator.share) {
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], fileName, { type: 'application/pdf' })] })) {
         try {
-            // Tester si on PEUT partager des fichiers
-            const canShareFiles = navigator.canShare && navigator.canShare({ files: [pdfFile] });
-            
-            if (canShareFiles) {
-                // ✅ MOBILE : Partage avec fichier
-                await navigator.share({
-                    title: `Liste de Noël de ${profile.name}`,
-                    text: `Voici la liste de cadeaux de ${profile.name} pour Noël 🎄`,
-                    files: [pdfFile]
-                });
-                console.log('✅ PDF partagé avec succès');
-            } else {
-                // ⚠️ MOBILE : Partage sans fichier (lien uniquement)
-                await navigator.share({
-                    title: `Liste de Noël de ${profile.name}`,
-                    text: `Voici la liste de cadeaux de ${profile.name} pour Noël 🎄\n\nConsultez la liste sur : ${window.location.href}`
-                });
-                
-                // Télécharger quand même le PDF localement
-                downloadPdfFile(pdfBlob, fileName);
-                console.log('⚠️ Partage lien + téléchargement PDF');
-            }
-            
+            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+            await navigator.share({
+                title: `Liste de Noël de ${profile.name}`,
+                text: `Voici la liste de cadeaux de ${profile.name} pour Noël 🎄`,
+                files: [file]
+            });
         } catch (error) {
-            // Si annulation, ne rien faire
-            if (error.name === 'AbortError') {
-                console.log('ℹ️ Partage annulé');
-                return;
+            if (error.name !== 'AbortError') {
+                console.error('Erreur partage:', error);
+                doc.save(fileName);
             }
-            
-            // Si autre erreur, télécharger
-            console.warn('⚠️ Erreur partage, téléchargement:', error);
-            downloadPdfFile(pdfBlob, fileName);
         }
     } else {
-        // ✅ DESKTOP : Téléchargement direct
-        downloadPdfFile(pdfBlob, fileName);
-        console.log('💾 PDF téléchargé (desktop)');
-    }
-}
-
-// ✅ Fonction helper pour télécharger le PDF
-function downloadPdfFile(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    if (typeof showNotification === 'function') {
-        showNotification('💾 PDF téléchargé !', 'success');
+        doc.save(fileName);
+        // ✅ Notification de succès
+        if (typeof showNotification === 'function') {
+            showNotification('📄 PDF téléchargé avec succès !', 'success');
+        }
     }
 }
