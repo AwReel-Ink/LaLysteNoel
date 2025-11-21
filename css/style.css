@@ -86,6 +86,8 @@ body {
     font-size: 16px;
     cursor: pointer;
     transition: background 0.3s;
+    display: block;
+    margin-bottom: 10px; /* Espace entre le bouton et les titres */
 }
 
 .back-btn:hover {
@@ -725,5 +727,6 @@ body {
 .profile-selector p strong {
     color: #FFDD00;
 }
+
 
 
