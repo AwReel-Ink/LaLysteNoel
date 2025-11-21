@@ -184,28 +184,47 @@ async function generatePDF(profile, gifts, wisdomLevel) {
         doc.text(`Liste faite avec Amour par ${profile.name} - Page ${i} / ${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
     }
 
-    const pdfBlob = doc.output('blob');
+        const pdfBlob = doc.output('blob');
     const fileName = `Liste_Noel_${profile.name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
 
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], fileName, { type: 'application/pdf' })] })) {
+    // ✅ Détection simplifiée du partage natif
+    if (navigator.share) {
         try {
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+            
+            // ✅ Partage direct sans vérification canShare (qui peut bloquer)
             await navigator.share({
                 title: `Liste de Noël de ${profile.name}`,
                 text: `Voici la liste de cadeaux de ${profile.name} pour Noël 🎄`,
                 files: [file]
             });
+            
+            // ✅ Notification uniquement si partage réussi
+            if (typeof showNotification === 'function') {
+                showNotification('✅ PDF partagé avec succès !', 'success');
+            }
+            
         } catch (error) {
-            if (error.name !== 'AbortError') {
-                console.error('Erreur partage:', error);
-                doc.save(fileName);
+            // Si l'utilisateur annule (AbortError), ne rien faire
+            if (error.name === 'AbortError') {
+                console.log('Partage annulé par l\'utilisateur');
+                return;
+            }
+            
+            // Si erreur réelle, fallback sur téléchargement
+            console.warn('Partage non supporté, téléchargement direct:', error);
+            doc.save(fileName);
+            
+            if (typeof showNotification === 'function') {
+                showNotification('💾 PDF téléchargé sur l\'appareil', 'success');
             }
         }
     } else {
+        // ✅ Fallback desktop : téléchargement direct
         doc.save(fileName);
-        // ✅ Notification de succès
+        
         if (typeof showNotification === 'function') {
-            showNotification('📄 PDF téléchargé avec succès !', 'success');
+            showNotification('💾 PDF téléchargé sur l\'appareil', 'success');
         }
     }
 }
