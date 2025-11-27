@@ -1,8 +1,16 @@
-// Fonction auxiliaire pour convertir URL en base64 avec qualité fixe 70%
+// Fonction auxiliaire pour convertir URL/File en base64 avec compression ULTRA
 async function urlToBase64(url) {
     try {
-        const response = await fetch(url);
-        const blob = await response.blob();
+        let blob;
+        
+        // ✅ Si c'est une image locale (File object)
+        if (url instanceof File || url instanceof Blob) {
+            blob = url;
+        } else {
+            // ✅ Si c'est une URL
+            const response = await fetch(url);
+            blob = await response.blob();
+        }
         
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -12,11 +20,12 @@ async function urlToBase64(url) {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // ✅ Taille réduite : 400px max (au lieu de 600)
-                const maxSize = 400;
+                // ✅ Taille ULTRA réduite pour compression max
+                const maxSize = 300; // Réduit de 600 → 300px
                 let width = img.width;
                 let height = img.height;
                 
+                // Réduction proportionnelle
                 if (width > height && width > maxSize) {
                     height = (height * maxSize) / width;
                     width = maxSize;
@@ -28,20 +37,32 @@ async function urlToBase64(url) {
                 canvas.width = width;
                 canvas.height = height;
                 
-                // ✅ Lissage pour meilleure compression
+                // ✅ Lissage haute qualité (compense la petite taille)
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
                 ctx.drawImage(img, 0, 0, width, height);
                 
-                // ✅ Compression à 60% (au lieu de 70%)
-                resolve(canvas.toDataURL('image/jpeg', 0.6));
+                // ✅ Compression AGGRESSIVE : 50% qualité (au lieu de 70%)
+                const base64 = canvas.toDataURL('image/jpeg', 0.5);
+                
+                // ✅ Vérification taille (debug)
+                const sizeKB = Math.round((base64.length * 0.75) / 1024);
+                console.log(`📸 Image compressée : ${width}x${height}px, ~${sizeKB} KB`);
+                
+                resolve(base64);
             };
             
             img.onerror = reject;
-            img.src = URL.createObjectURL(blob);
+            
+            // ✅ Gestion blob ou URL
+            if (blob) {
+                img.src = URL.createObjectURL(blob);
+            } else {
+                img.src = url;
+            }
         });
     } catch (error) {
-        // Proxy CORS (même logique)
+        // ✅ Tentative avec proxy CORS
         try {
             const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
             const response = await fetch(proxiedUrl);
@@ -55,7 +76,7 @@ async function urlToBase64(url) {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    const maxSize = 400;
+                    const maxSize = 300;
                     let width = img.width;
                     let height = img.height;
                     
@@ -73,23 +94,23 @@ async function urlToBase64(url) {
                     ctx.imageSmoothingQuality = 'high';
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    resolve(canvas.toDataURL('image/jpeg', 0.6));
+                    resolve(canvas.toDataURL('image/jpeg', 0.5));
                 };
                 
                 img.onerror = reject;
                 img.src = URL.createObjectURL(blob);
             });
         } catch (proxyError) {
-            console.warn(`Impossible de charger l'image: ${url}`);
+            console.warn(`❌ Impossible de charger l'image: ${url}`);
             return null;
         }
     }
 }
 
-async function generatePDF(profile, gifts, wisdomLevel) {
+async function generatePDF(profile, gifts, wisdomLevel, mode = 'download') {
     const { jsPDF } = window.jspdf;
     
-    // ✅ Configuration PDF optimisée 150 DPI
+    // ✅ Configuration PDF optimisée
     const doc = new jsPDF({
         orientation: 'p',
         unit: 'mm',
@@ -107,11 +128,24 @@ async function generatePDF(profile, gifts, wisdomLevel) {
     const itemWidth = (pageWidth - (margin * 2)) / itemsPerRow;
     const itemHeight = (pageHeight - (margin * 2) - 20) / itemsPerColumn;
 
-    // ✅ Conversion des images avec 70% de qualité
+    // ✅ Conversion ULTRA des images (URLs, base64 ET fichiers locaux)
     const processedGifts = await Promise.all(gifts.map(async (gift) => {
-        if (gift.image && gift.image.startsWith('http')) {
-            const base64 = await urlToBase64(gift.image);
-            return { ...gift, image: base64 };
+        if (gift.image) {
+            // ✅ Si c'est une URL HTTP
+            if (typeof gift.image === 'string' && gift.image.startsWith('http')) {
+                const base64 = await urlToBase64(gift.image);
+                return { ...gift, image: base64 };
+            }
+            // ✅ Si c'est déjà en base64 (re-compresser quand même)
+            else if (typeof gift.image === 'string' && gift.image.startsWith('data:')) {
+                const base64 = await urlToBase64(gift.image);
+                return { ...gift, image: base64 };
+            }
+            // ✅ Si c'est un File/Blob (photo téléphone)
+            else if (gift.image instanceof File || gift.image instanceof Blob) {
+                const base64 = await urlToBase64(gift.image);
+                return { ...gift, image: base64 };
+            }
         }
         return gift;
     }));
@@ -143,8 +177,8 @@ async function generatePDF(profile, gifts, wisdomLevel) {
                 const imgY = y + (textLines.length * 3);
                 const imgSize = Math.min(itemWidth - 4, itemHeight - (textLines.length * 3) - 4);
                 
-                // ✅ JPEG avec compression FAST
-                doc.addImage(gift.image, 'JPEG', x + 2, imgY, imgSize, imgSize, undefined, 'FAST');
+                // ✅ JPEG sans paramètre 'FAST' (déjà compressé dans urlToBase64)
+                doc.addImage(gift.image, 'JPEG', x + 2, imgY, imgSize, imgSize);
             } catch (error) {
                 console.error('Erreur image:', error);
                 const imgY = y + (textLines.length * 3);
@@ -176,7 +210,7 @@ async function generatePDF(profile, gifts, wisdomLevel) {
 
             if (itemCount % (itemsPerRow * itemsPerColumn) === 0 && itemCount < processedGifts.length) {
                 doc.addPage();
-                y = margin;
+                y = 30; // ✅ Corrigé : reprendre après l'en-tête
             }
         }
     }
@@ -193,26 +227,43 @@ async function generatePDF(profile, gifts, wisdomLevel) {
     const pdfBlob = doc.output('blob');
     const fileName = `Liste_Noel_${profile.name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
 
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], fileName, { type: 'application/pdf' })] })) {
+    // ✅ Gestion du mode (partage ou téléchargement)
+    if (mode === 'share' && navigator.share && navigator.canShare) {
         try {
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-            await navigator.share({
-                title: `Liste de Noël de ${profile.name}`,
-                text: `Voici la liste de cadeaux de ${profile.name} pour Noël 🎄`,
-                files: [file]
-            });
+            
+            // ✅ Vérifier si le fichier peut être partagé
+            if (navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: `Liste de Noël de ${profile.name}`,
+                    text: `Voici la liste de cadeaux de ${profile.name} pour Noël 🎄`,
+                    files: [file]
+                });
+                
+                if (typeof showNotification === 'function') {
+                    showNotification('📤 PDF partagé avec succès !', 'success');
+                }
+            } else {
+                // Fallback : téléchargement
+                doc.save(fileName);
+                if (typeof showNotification === 'function') {
+                    showNotification('📄 PDF téléchargé (partage non supporté)', 'info');
+                }
+            }
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error('Erreur partage:', error);
                 doc.save(fileName);
+                if (typeof showNotification === 'function') {
+                    showNotification('📄 PDF téléchargé (erreur partage)', 'info');
+                }
             }
         }
     } else {
+        // ✅ Mode téléchargement
         doc.save(fileName);
-        // ✅ Notification de succès
         if (typeof showNotification === 'function') {
             showNotification('📄 PDF téléchargé avec succès !', 'success');
         }
     }
 }
-
