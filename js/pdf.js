@@ -12,8 +12,8 @@ async function urlToBase64(url) {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // ✅ Taille fixe optimale pour 150 DPI
-                const maxSize = 600;
+                // ✅ Taille réduite : 400px max (au lieu de 600)
+                const maxSize = 400;
                 let width = img.width;
                 let height = img.height;
                 
@@ -27,17 +27,21 @@ async function urlToBase64(url) {
                 
                 canvas.width = width;
                 canvas.height = height;
+                
+                // ✅ Lissage pour meilleure compression
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
                 ctx.drawImage(img, 0, 0, width, height);
                 
-                // ✅ 70% de qualité fixe
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
+                // ✅ Compression à 60% (au lieu de 70%)
+                resolve(canvas.toDataURL('image/jpeg', 0.6));
             };
             
             img.onerror = reject;
             img.src = URL.createObjectURL(blob);
         });
     } catch (error) {
-        // Essai avec proxy CORS
+        // Proxy CORS (même logique)
         try {
             const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
             const response = await fetch(proxiedUrl);
@@ -51,7 +55,7 @@ async function urlToBase64(url) {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    const maxSize = 600;
+                    const maxSize = 400;
                     let width = img.width;
                     let height = img.height;
                     
@@ -65,9 +69,11 @@ async function urlToBase64(url) {
                     
                     canvas.width = width;
                     canvas.height = height;
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    resolve(canvas.toDataURL('image/jpeg', 0.6));
                 };
                 
                 img.onerror = reject;
@@ -209,3 +215,4 @@ async function generatePDF(profile, gifts, wisdomLevel) {
         }
     }
 }
+
