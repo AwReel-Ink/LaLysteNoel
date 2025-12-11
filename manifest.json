@@ -1,5 +1,5 @@
 {
-  "name": "Liste de Noël",
+  "name": "LaLysteNoel",
   "short_name": "Noël",
   "description": "Gérez votre liste de cadeaux de Noël",
   "start_url": "/LaLysteNoel/",
@@ -47,4 +47,5 @@
     }
   ]
 }
+
 
